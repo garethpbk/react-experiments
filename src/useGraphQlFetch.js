@@ -18,44 +18,81 @@ function determineQueryType(query) {
   }
 }
 
+function handleErrorResponse(errors) {
+  console.log(errors);
+}
+
 async function fetchApi(url, queryString, setLoading) {
   setLoading(true);
 
-  const apiRequest = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: queryString,
-    // body: JSON.stringify({ query }),
-  });
+  try {
+    const apiRequest = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: queryString,
+    });
 
-  const apiResponse = await apiRequest.json();
+    const apiResponse = await apiRequest.json();
 
-  setLoading(false);
+    setLoading(false);
 
-  return apiResponse;
+    if (apiResponse.hasOwnProperty('errors')) {
+      return {
+        type: 'error',
+        response: apiResponse,
+      };
+    }
+
+    return {
+      type: 'success',
+      response: apiResponse,
+    };
+  } catch (err) {
+    const formattedErrors = handleErrorResponse(err);
+
+    setLoading(false);
+
+    return {
+      type: 'error',
+    };
+  }
+
+  // return apiResponse;
 }
 
-function useGraphQlFetch(url, query, manual = false) {
-  const [loading, setLoading] = useState(false);
+function returnDataOrError(res, setData, setError) {
+  if (res.type === 'error') {
+    const errorLocation = `Line ${res.response.errors[0].locations[0].line}, Column ${
+      res.response.errors[0].locations[0].column
+    }`;
+    setError(`${errorLocation}: ${res.response.errors[0].message}`);
+  }
+
+  setData(res.response.data);
+}
+
+function useGraphqlFetch(url, query, manual = false) {
   const [data, setData] = useState({});
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   if (!manual) {
     useEffect(() => {
       const queryString = determineQueryType(query);
 
-      fetchApi(url, queryString, setLoading).then(res => setData(res));
+      fetchApi(url, queryString, setLoading).then(res => returnDataOrError(res, setData, setError));
     }, [Object.keys(query).length > 0 || query.length > 0]);
   }
 
   const triggerFetch = useCallback(() => {
     const queryString = determineQueryType(query);
 
-    fetchApi(url, queryString, setLoading).then(res => setData(res));
+    fetchApi(url, queryString, setLoading).then(res => returnDataOrError(res, setData, setError));
   });
 
-  return [data, loading, triggerFetch];
+  return [data, error, loading, triggerFetch];
 }
 
-export default useGraphQlFetch;
+export default useGraphqlFetch;

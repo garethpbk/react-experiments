@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import useGraphQlFetch from './useGraphQlFetch';
+import useGraphqlFetch from './useGraphqlFetch';
 
 function App() {
   const [toggle, setToggle] = useState(false);
@@ -25,15 +25,24 @@ function App() {
     }
   `;
 
-  const [data, loading, triggerFetch] = useGraphQlFetch(url, taggedQuery, true);
+  const [data, error, loading, triggerFetch] = useGraphqlFetch(url, taggedQuery, false);
 
   console.log(loading);
+  console.log(error);
   console.log(data);
 
   if (loading) {
     return (
       <div>
         <h1>Loading...</h1>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <p>{error}</p>
       </div>
     );
   }
